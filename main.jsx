@@ -8,7 +8,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 
-function Login() {
+function Login({ onRegister }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
@@ -53,6 +53,149 @@ function Login() {
 
           <button type="submit">Iniciar sesión</button>
         </form>
+
+        <button
+          type="button"
+          onClick={onRegister}
+          style={{
+            marginTop: "12px",
+            background: "transparent",
+            color: "#2563eb",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Crear cuenta
+        </button>
+      </section>
+    </main>
+  );
+}
+
+function Register({ onLogin }) {
+  const [fullName, setFullName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [department, setDepartment] = React.useState("");
+  const [role, setRole] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [success, setSuccess] = React.useState("");
+
+  async function register(e) {
+    e.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          department,
+          role,
+        },
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    if (data.session) {
+      setSuccess("Cuenta creada correctamente. Entrando...");
+    } else {
+      setSuccess(
+        "Cuenta creada. Revisa tu correo si Supabase solicita confirmar la cuenta."
+      );
+    }
+  }
+
+  return (
+    <main className="login">
+      <section>
+        <b className="logo">M</b>
+        <h1>Crear cuenta</h1>
+        <p>Regístrate en MitsuChat</p>
+
+        <form onSubmit={register}>
+          <input
+            type="text"
+            placeholder="Nombre completo"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
+
+          <input
+            type="email"
+            placeholder="Correo"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <input
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          <input
+            type="text"
+            placeholder="Departamento"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+          />
+
+          <input
+            type="text"
+            placeholder="Puesto"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          />
+
+          {error && <div className="err">{error}</div>}
+
+          {success && (
+            <div
+              style={{
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "8px",
+                background: "#dcfce7",
+                color: "#166534",
+              }}
+            >
+              {success}
+            </div>
+          )}
+
+          <button type="submit">Crear cuenta</button>
+        </form>
+
+        <button
+          type="button"
+          onClick={onLogin}
+          style={{
+            marginTop: "12px",
+            background: "transparent",
+            color: "#2563eb",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Ya tengo una cuenta
+        </button>
       </section>
     </main>
   );
@@ -233,8 +376,14 @@ function Chat({ user }) {
 
                 <div>
                   <b>{selected.full_name || "Empleado"}</b>
+
                   {selected.department && (
-                    <small style={{ display: "block", color: "#6b7280" }}>
+                    <small
+                      style={{
+                        display: "block",
+                        color: "#6b7280",
+                      }}
+                    >
                       {selected.department}
                     </small>
                   )}
@@ -285,6 +434,7 @@ function Chat({ user }) {
 function App() {
   const [session, setSession] = React.useState(null);
   const [ready, setReady] = React.useState(false);
+  const [registering, setRegistering] = React.useState(false);
 
   React.useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -307,7 +457,15 @@ function App() {
     return <div className="loading">Cargando...</div>;
   }
 
-  return session ? <Chat user={session.user} /> : <Login />;
+  if (session) {
+    return <Chat user={session.user} />;
+  }
+
+  if (registering) {
+    return <Register onLogin={() => setRegistering(false)} />;
+  }
+
+  return <Login onRegister={() => setRegistering(true)} />;
 }
 
 createRoot(document.getElementById("root")).render(<App />);
