@@ -66,20 +66,16 @@ function Chat({ user }) {
   const [error, setError] = React.useState("");
 
   React.useEffect(() => {
-    let active = true;
-
     async function loadProfiles() {
       setError("");
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name")
+        .select("id,full_name,department,role")
         .order("full_name", { ascending: true });
 
-      if (!active) return;
-
       if (error) {
-        console.error("Error cargando perfiles:", error);
+        console.error(error);
         setError(error.message);
         return;
       }
@@ -92,10 +88,6 @@ function Chat({ user }) {
     }
 
     loadProfiles();
-
-    return () => {
-      active = false;
-    };
   }, [user.id]);
 
   React.useEffect(() => {
@@ -104,21 +96,17 @@ function Chat({ user }) {
       return;
     }
 
-    let active = true;
-
     async function loadMessages() {
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .or(
-          `and(sender_id.eq.${user.id},receiver_id.eq.${selected.id}),and(sender_id.eq.${selected.id},receiver_id.eq.${user.id})`
+          `and(sender_id.eq.${user.id},recipient_id.eq.${selected.id}),and(sender_id.eq.${selected.id},recipient_id.eq.${user.id})`
         )
         .order("created_at", { ascending: true });
 
-      if (!active) return;
-
       if (error) {
-        console.error("Error cargando mensajes:", error);
+        console.error(error);
         return;
       }
 
@@ -140,10 +128,10 @@ function Chat({ user }) {
           const message = payload.new;
 
           const belongs =
-            (message.sender_id === user.id &&
-              message.receiver_id === selected.id) ||
-            (message.sender_id === selected.id &&
-              message.receiver_id === user.id);
+            (String(message.sender_id) === String(user.id) &&
+              String(message.recipient_id) === String(selected.id)) ||
+            (String(message.sender_id) === String(selected.id) &&
+              String(message.recipient_id) === String(user.id));
 
           if (belongs) {
             setMessages((current) =>
@@ -157,7 +145,6 @@ function Chat({ user }) {
       .subscribe();
 
     return () => {
-      active = false;
       supabase.removeChannel(channel);
     };
   }, [selected?.id, user.id]);
@@ -165,22 +152,23 @@ function Chat({ user }) {
   async function sendMessage(e) {
     e.preventDefault();
 
-    const content = text.trim();
+    const messageText = text.trim();
 
-    if (!content || !selected) return;
-
-    setText("");
+    if (!messageText || !selected) return;
 
     const { error } = await supabase.from("messages").insert({
       sender_id: user.id,
-      receiver_id: selected.id,
-      content,
+      recipient_id: selected.id,
+      body: messageText,
     });
 
     if (error) {
+      console.error(error);
       alert(`No se pudo enviar el mensaje: ${error.message}`);
-      setText(content);
+      return;
     }
+
+    setText("");
   }
 
   async function logout() {
@@ -228,7 +216,9 @@ function Chat({ user }) {
                 {(person.full_name || "?")[0].toUpperCase()}
               </span>
 
-              {person.full_name || "Empleado"}
+              <span>
+                {person.full_name || "Empleado"}
+              </span>
             </button>
           ))}
         </aside>
@@ -241,19 +231,28 @@ function Chat({ user }) {
                   {(selected.full_name || "?")[0].toUpperCase()}
                 </span>
 
-                <b>{selected.full_name || "Empleado"}</b>
+                <div>
+                  <b>{selected.full_name || "Empleado"}</b>
+                  {selected.department && (
+                    <small style={{ display: "block", color: "#6b7280" }}>
+                      {selected.department}
+                    </small>
+                  )}
+                </div>
               </div>
 
               <div className="msgs">
-                {messages.length ? (
+                {messages.length > 0 ? (
                   messages.map((message) => (
                     <div
                       className={`msg ${
-                        message.sender_id === user.id ? "mine" : ""
+                        String(message.sender_id) === String(user.id)
+                          ? "mine"
+                          : ""
                       }`}
                       key={message.id}
                     >
-                      {message.content}
+                      {message.body}
                     </div>
                   ))
                 ) : (
