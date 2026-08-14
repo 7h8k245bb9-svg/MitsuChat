@@ -73,13 +73,13 @@ function Chat({ user }) {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,name")
-        .order("name");
+        .select("id,full_name")
+        .order("full_name", { ascending: true });
 
       if (!active) return;
 
       if (error) {
-        console.error(error);
+        console.error("Error cargando perfiles:", error);
         setError(error.message);
         return;
       }
@@ -118,7 +118,7 @@ function Chat({ user }) {
       if (!active) return;
 
       if (error) {
-        console.error(error);
+        console.error("Error cargando mensajes:", error);
         return;
       }
 
@@ -178,7 +178,7 @@ function Chat({ user }) {
     });
 
     if (error) {
-      alert(`No se pudo enviar: ${error.message}`);
+      alert(`No se pudo enviar el mensaje: ${error.message}`);
       setText(content);
     }
   }
@@ -225,10 +225,10 @@ function Chat({ user }) {
               onClick={() => setSelected(person)}
             >
               <span className="avatar">
-                {(person.name || "?")[0].toUpperCase()}
+                {(person.full_name || "?")[0].toUpperCase()}
               </span>
 
-              {person.name || "Empleado"}
+              {person.full_name || "Empleado"}
             </button>
           ))}
         </aside>
@@ -238,10 +238,10 @@ function Chat({ user }) {
             <>
               <div className="chathead">
                 <span className="avatar">
-                  {(selected.name || "?")[0].toUpperCase()}
+                  {(selected.full_name || "?")[0].toUpperCase()}
                 </span>
 
-                <b>{selected.name || "Empleado"}</b>
+                <b>{selected.full_name || "Empleado"}</b>
               </div>
 
               <div className="msgs">
@@ -308,11 +308,7 @@ function App() {
     return <div className="loading">Cargando...</div>;
   }
 
-  return session ? (
-    <Chat user={session.user} />
-  ) : (
-    <Login />
-  );
+  return session ? <Chat user={session.user} /> : <Login />;
 }
 
 createRoot(document.getElementById("root")).render(<App />);
